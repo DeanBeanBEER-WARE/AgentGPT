@@ -245,6 +245,7 @@ Example usage:
 1. **Docker Issues**: Ensure Docker Desktop is running
 2. **API Key Issues**: Verify your API keys in the .env file
 3. **Tool Errors**: Check the Docker logs for detailed error messages
+4. **Environment Updates**: Changes to environment variables in `.env` files are automatically integrated into the running Docker containers - no restart required
 
 ## LangChain Configuration
 
