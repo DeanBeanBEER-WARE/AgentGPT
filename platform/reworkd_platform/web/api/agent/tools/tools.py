@@ -7,6 +7,7 @@ from reworkd_platform.web.api.agent.tools.image import Image
 from reworkd_platform.web.api.agent.tools.search import Search
 from reworkd_platform.web.api.agent.tools.sidsearch import SID
 from reworkd_platform.web.api.agent.tools.calculator import Calculator
+from reworkd_platform.web.api.agent.tools.notion import Notion
 from reworkd_platform.web.api.agent.tools.tool import Tool
 
 
@@ -32,6 +33,7 @@ def get_external_tools() -> List[Type[Tool]]:
         Code,
         SID,
         Calculator,
+        Notion,
     ]
 
 

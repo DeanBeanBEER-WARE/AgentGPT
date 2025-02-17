@@ -139,9 +139,100 @@ class Calculator(Tool):
 ```
 
 ## Environment Variables
-- `OPENAI_API_KEY`: Your OpenAI API key
+- `OPENAI_API_KEY`: Your OpenAI API key (supports GPT-3.5-turbo and GPT-4)
 - `SERP_API_KEY`: (Optional) For Google search functionality
 - `REPLICATE_API_KEY`: (Optional) For additional AI models
+- `NOTION_API_KEY`: (Optional) For Notion integration
+
+### Using GPT-4
+There are two ways to use GPT-4:
+
+1. **Through Environment Variables**:
+   Add to your `.env` file:
+   ```
+   REWORKD_PLATFORM_MODEL=gpt-4
+   ```
+
+2. **Through the Web Interface**:
+   - Click on the settings icon in the web interface
+   - Under "Model", select "GPT-4" from the dropdown
+   - Click "Save Changes"
+
+Important Notes:
+- Make sure your OpenAI API key has access to GPT-4
+- GPT-4 has a max token limit of 8000 (defined in `schemas/agent.py`)
+- GPT-4 is more expensive than GPT-3.5-turbo
+- You can switch between models at any time
+
+Available Models:
+```python
+LLM_Model = Literal[
+    "gpt-3.5-turbo",      # Default, 4000 tokens
+    "gpt-3.5-turbo-16k",  # 16000 tokens
+    "gpt-4",              # 8000 tokens
+]
+```
+
+### SID Integration
+The SID tool allows you to access and manage your Notion files and other personal information.
+
+#### To use the SID integration:
+1. Ensure you have the SID credentials set up in your application.
+2. Use the following format to interact with Notion:
+```json
+// Search Notion
+{"action": "search", "params": {"query": "meeting notes"}}
+
+// Read a page
+{"action": "read_page", "params": {"page_id": "page_id_here"}}
+
+// Update a page
+{"action": "update_page", "params": {
+    "page_id": "page_id_here",
+    "updates": {"properties": {"Title": {"title": [{"text": {"content": "New Title"}}]}}}
+}}
+```
+3. The SID tool will handle authentication and access to your Notion files.
+4. Make sure to share your Notion pages/databases with the SID integration.
+
+### Notion Integration
+To use the Notion integration directly:
+1. Create a Notion integration at https://www.notion.so/my-integrations
+2. Get your integration token (starts with "secret_")
+3. Add to your .env file:
+   ```
+   REWORKD_PLATFORM_NOTION_API_KEY=your_notion_integration_token
+   ```
+4. Share your Notion pages/databases with the integration
+}}
+
+1. Create a Notion integration at https://www.notion.so/my-integrations
+2. Get your integration token (starts with "secret_")
+3. Add to your .env file:
+   ```
+   REWORKD_PLATFORM_NOTION_API_KEY=your_notion_integration_token
+   ```
+4. Share your Notion pages/databases with the integration
+
+The Notion tool supports:
+- Searching pages and databases
+- Reading page content
+- Updating page content
+
+Example usage:
+```json
+// Search Notion
+{"action": "search", "params": {"query": "meeting notes"}}
+
+// Read a page
+{"action": "read_page", "params": {"page_id": "page_id_here"}}
+
+// Update a page
+{"action": "update_page", "params": {
+    "page_id": "page_id_here",
+    "updates": {"properties": {"Title": {"title": [{"text": {"content": "New Title"}}]}}}
+}}
+```
 
 ## Contributing
 1. Fork the repository
