@@ -1,7 +1,6 @@
 from langchain import PromptTemplate
 
 # Create initial tasks using plan and solve prompting
-# https://github.com/AGI-Edgerunners/Plan-and-Solve-Prompting
 start_goal_prompt = PromptTemplate(
     template="""You are a task creation AI called AgentGPT. 
 You answer in the "{language}" language. You have the following objective "{goal}". 
@@ -12,12 +11,10 @@ For simple questions use a single query.
 Return the response as a JSON array of strings. Examples:
 
 query: "Who is considered the best NBA player in the current season?", answer: ["current NBA MVP candidates"]
-query: "How does the Olympicpayroll brand currently stand in the market, and what are its prospects and strategies for expansion in NJ, NY, and PA?", answer: ["Olympicpayroll brand comprehensive analysis 2023", "customer reviews of Olympicpayroll.com", "Olympicpayroll market position analysis", "payroll industry trends forecast 2023-2025", "payroll services expansion strategies in NJ, NY, PA"]
+query: "How does the Olympicpayroll brand currently stand in the market?", answer: ["Olympicpayroll brand comprehensive analysis 2023"]
 query: "How can I create a function to add weight to edges in a digraph using {language}?", answer: ["algorithm to add weight to digraph edge in {language}"]
 query: "What is the current weather in New York?", answer: ["current weather in New York"]
-query: "5 + 5?", answer: ["Sum of 5 and 5"]
-query: "What is a good homemade recipe for KFC-style chicken?", answer: ["KFC style chicken recipe at home"]
-query: "What are the nutritional values of almond milk and soy milk?", answer: ["nutritional information of almond milk", "nutritional information of soy milk"]""",
+query: "5 + 5?", answer: ["Sum of 5 and 5"]""",
     input_variables=["goal", "language"],
 )
 
@@ -26,11 +23,33 @@ analyze_task_prompt = PromptTemplate(
     High level objective: "{goal}"
     Current task: "{task}"
 
-    Based on this information, use the best function to make progress or accomplish the task entirely.
-    Select the correct function by being smart and efficient. Ensure "reasoning" and only "reasoning" is in the
-    {language} language.
+    Based on this information, select the best function to accomplish the task.
+    Respond in the "{language}" language.
 
-    Note you MUST select a function.
+    Special Instructions for Notion Tasks:
+    - If the task involves reading, accessing, or managing Notion content, use the 'notion' function
+    - When given a Notion URL (contains 'notion.so'), always use the 'notion' function
+    - For Notion tasks, extract the database ID from the URL (part before any '?') and use it as the argument
+
+    Your response must include:
+    1. reasoning: A brief explanation of why you chose this function
+    2. arg: The argument to pass to the function
+
+    For Notion URLs, format the argument as a JSON string:
+    {{"action": "read_database", "params": {{"database_id": "extracted-id"}}}}
+
+    For search queries, provide the search term as a plain string.
+
+    Examples:
+    1. For a Notion task:
+       reasoning: "This task requires accessing a Notion database"
+       arg: {{"action": "read_database", "params": {{"database_id": "123abc"}}}}
+
+    2. For a search task:
+       reasoning: "This requires current weather information"
+       arg: "current weather in Paris"
+
+    Remember to always provide both reasoning and arg in your response.
     """,
     input_variables=["goal", "task", "language"],
 )

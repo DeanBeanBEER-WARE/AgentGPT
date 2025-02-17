@@ -90,7 +90,14 @@ class OpenAIAgentService(AgentService):
     ) -> Analysis:
         user_tools = await get_user_tools(tool_names, self.user, self.oauth_crud)
         functions = list(map(get_tool_function, user_tools))
-        prompt = analyze_task_prompt.format_prompt(
+
+        # Create the system message prompt
+        prompt = ChatPromptTemplate.from_messages(
+            [SystemMessagePromptTemplate(prompt=analyze_task_prompt)]
+        )
+
+        # Format the prompt with all required variables
+        formatted_prompt = prompt.format_prompt(
             goal=goal,
             task=task,
             language=self.settings.language,
@@ -98,13 +105,13 @@ class OpenAIAgentService(AgentService):
 
         self.token_service.calculate_max_tokens(
             self.model,
-            prompt.to_string(),
+            formatted_prompt.to_string(),
             str(functions),
         )
 
         message = await openai_error_handler(
             func=self.model.apredict_messages,
-            messages=prompt.to_messages(),
+            messages=formatted_prompt.to_messages(),
             functions=functions,
             settings=self.settings,
             callbacks=self.callbacks,
@@ -120,7 +127,9 @@ class OpenAIAgentService(AgentService):
                 action=function_call.get("name", get_tool_name(get_default_tool())),
                 **analysis_arguments.dict(),
             )
-        except (OpenAIError, ValidationError):
+        except (OpenAIError, ValidationError) as e:
+            logger.error(f"Error parsing analysis: {str(e)}")
+            logger.error(f"Completion: {completion}")
             return Analysis.get_default_analysis(task)
 
     async def execute_task_agent(

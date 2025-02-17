@@ -10,14 +10,22 @@ import json
 
 class Notion(Tool):
     description = (
-        "Access and manage Notion pages and databases. Can search, read, update, and create "
-        "content in Notion. Use this for managing notes, documents, and databases."
+        "Direct integration with Notion databases - NO BROWSER NEEDED. "
+        "This tool can directly access Notion content using database IDs (found in URLs). "
+        "When given a Notion URL like 'notion.so/.../your-database-id?v=...', "
+        "extract the database ID (part before '?') and use it with this tool.\n\n"
+        "Example: From URL 'notion.so/1234...?v=5678', use '1234...' as database_id.\n\n"
+        "Available actions:\n"
+        "1. List all databases\n"
+        "2. Read entries from a database\n"
+        "3. Create new entries"
     )
-    public_description = "Interact with Notion pages and databases"
+    public_description = "Direct access to Notion databases - no browser needed"
     arg_description = (
-        "A JSON string with 'action' and 'params' keys. "
-        "Actions: 'search', 'read_page', 'update_page', 'create_page', 'list_databases'. "
-        "Example: {'action': 'search', 'params': {'query': 'meeting notes'}}"
+        "To read a Notion database from a URL like 'notion.so/abc123?v=xyz', use:\n"
+        "1. First list databases: {'action': 'list_databases'}\n"
+        "2. Then read database: {'action': 'read_database', 'params': {'database_id': 'abc123'}}\n"
+        "3. Or create entry: {'action': 'create_entry', 'params': {'database_id': 'abc123', 'title': 'New Entry'}}"
     )
     image_url = "/tools/notion.svg"
 
@@ -34,52 +42,63 @@ class Notion(Tool):
     async def dynamic_available(user: UserBase, oauth_crud: OAuthCrud) -> bool:
         return bool(settings.notion_api_key)
 
-    async def _search(self, query: str) -> str:
-        """Search Notion content"""
-        if not query:
-            return "Error: Search query is required"
-        
-        results = self.notion.search(query=query).get('results', [])
-        formatted_results = []
-        for result in results[:5]:
-            title = self._get_title_from_result(result)
-            page_id = result.get('id', '')
-            object_type = result.get('object', 'unknown')
-            formatted_results.append(f"- {title} (Type: {object_type}, ID: {page_id})")
-        
-        return "\n".join(formatted_results) if formatted_results else "No results found"
+    def _get_title_property(self, database_id: str) -> str:
+        """Get the name of the title property in a database"""
+        db_info = self.notion.databases.retrieve(database_id)
+        for prop_name, prop_info in db_info.get('properties', {}).items():
+            if prop_info.get('type') == 'title':
+                return prop_name
+        raise ValueError("No title property found in database")
 
-    async def _read_page(self, page_id: str) -> str:
-        """Read a Notion page"""
-        if not page_id:
-            return "Error: Page ID is required"
-        
+    async def _read_database(self, database_id: str) -> str:
+        """Read entries from a Notion database"""
         try:
-            page = self.notion.pages.retrieve(page_id)
-            blocks = self.notion.blocks.children.list(page_id).get('results', [])
+            # Clean the database ID (remove any URL parts)
+            database_id = database_id.split('?')[0].strip()
             
-            # Get page title
-            title = self._get_title_from_result(page)
-            content = [f"Title: {title}"]
+            # Get database structure
+            db_info = self.notion.databases.retrieve(database_id)
+            title_prop = self._get_title_property(database_id)
             
-            # Extract block content
-            for block in blocks:
-                block_content = self._extract_block_content(block)
-                if block_content:
-                    content.append(block_content)
+            # Query entries
+            query_result = self.notion.databases.query(
+                database_id=database_id,
+                page_size=10
+            )
             
-            return "\n".join(content)
+            if not query_result['results']:
+                return "No entries found in database"
+            
+            # Format output
+            output = [f"Database: {db_info['title'][0]['text']['content']}\n"]
+            output.append("Entries:")
+            for page in query_result['results']:
+                title = page['properties'][title_prop]['title']
+                if title:
+                    output.append(f"- {title[0]['text']['content']}")
+            
+            return "\n".join(output)
+            
         except Exception as e:
-            return f"Error reading page: {str(e)}"
+            return (
+                f"Error reading database: {str(e)}.\n"
+                "If you provided a full URL, make sure to use only the database ID part (before the '?')."
+            )
 
-    async def _create_page(self, parent_id: str, title: str, content: str) -> str:
-        """Create a new Notion page"""
+    async def _create_entry(self, database_id: str, title: str) -> str:
+        """Create a new entry in a Notion database"""
         try:
-            # Create the page
+            # Clean the database ID (remove any URL parts)
+            database_id = database_id.split('?')[0].strip()
+            
+            # Get the title property name
+            title_prop = self._get_title_property(database_id)
+            
+            # Create the entry
             new_page = self.notion.pages.create(
-                parent={"page_id": parent_id},
+                parent={"database_id": database_id},
                 properties={
-                    "title": {
+                    title_prop: {
                         "title": [
                             {
                                 "text": {
@@ -91,23 +110,12 @@ class Notion(Tool):
                 }
             )
             
-            # Add content as blocks
-            self.notion.blocks.children.append(
-                new_page["id"],
-                children=[
-                    {
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": content}}]
-                        }
-                    }
-                ]
-            )
-            
-            return f"Page created successfully with ID: {new_page['id']}"
+            return f"Successfully created new entry '{title}' in the database"
         except Exception as e:
-            return f"Error creating page: {str(e)}"
+            return (
+                f"Error creating entry: {str(e)}.\n"
+                "If you provided a full URL, make sure to use only the database ID part (before the '?')."
+            )
 
     async def _list_databases(self) -> str:
         """List available Notion databases"""
@@ -117,41 +125,18 @@ class Notion(Tool):
             ).get('results', [])
             
             if not results:
-                return "No databases found"
+                return "No databases found. Make sure you've shared your databases with the integration."
             
-            formatted_results = []
+            output = ["Available Notion databases:"]
             for db in results:
-                title = self._get_title_from_result(db)
-                db_id = db.get('id', '')
-                formatted_results.append(f"- {title} (ID: {db_id})")
+                title = db['title'][0]['text']['content'] if db.get('title') else 'Untitled'
+                output.append(f"- {title}")
+                output.append(f"  ID: {db['id']}")
+                output.append("")  # Empty line for better readability
             
-            return "\n".join(formatted_results)
+            return "\n".join(output)
         except Exception as e:
             return f"Error listing databases: {str(e)}"
-
-    def _get_title_from_result(self, result: Dict) -> str:
-        """Extract title from a Notion result object"""
-        if 'properties' in result:
-            title_prop = result.get('properties', {}).get('title', [])
-            if title_prop and isinstance(title_prop, list):
-                return title_prop[0].get('text', {}).get('content', 'Untitled')
-            elif title_prop and isinstance(title_prop, dict):
-                return title_prop.get('title', [{}])[0].get('text', {}).get('content', 'Untitled')
-        return 'Untitled'
-
-    def _extract_block_content(self, block: Dict) -> Optional[str]:
-        """Extract content from a Notion block"""
-        block_type = block.get('type', '')
-        if not block_type:
-            return None
-            
-        block_data = block.get(block_type, {})
-        if 'rich_text' in block_data:
-            text_content = []
-            for text in block_data['rich_text']:
-                text_content.append(text.get('text', {}).get('content', ''))
-            return ' '.join(text_content)
-        return None
 
     async def call(
         self,
@@ -165,44 +150,51 @@ class Notion(Tool):
             return stream_string("Error: Notion API key not configured")
 
         try:
-            input_data = json.loads(input_str)
+            # If input looks like a URL, extract the database ID
+            if "notion.so" in input_str and "?" in input_str:
+                database_id = input_str.split("?")[0].split("/")[-1]
+                return await self._read_database(database_id)
+
+            # Otherwise, try to parse as JSON command
+            try:
+                input_data = json.loads(input_str)
+            except json.JSONDecodeError:
+                # If not JSON and not URL, assume it's a direct database ID
+                if input_str.strip():
+                    return await self._read_database(input_str.strip())
+                return stream_string(
+                    "Please provide either:\n"
+                    "1. A Notion URL\n"
+                    "2. A database ID\n"
+                    "3. A JSON command like {'action': 'list_databases'}"
+                )
+
             action = input_data.get('action', '')
             params = input_data.get('params', {})
 
-            result = "Invalid action"
-            
-            if action == 'search':
-                result = await self._search(params.get('query', ''))
-            elif action == 'read_page':
-                result = await self._read_page(params.get('page_id', ''))
-            elif action == 'create_page':
-                result = await self._create_page(
-                    params.get('parent_id', ''),
-                    params.get('title', ''),
-                    params.get('content', '')
-                )
-            elif action == 'list_databases':
+            if action == 'list_databases':
                 result = await self._list_databases()
-            elif action == 'update_page':
-                try:
-                    page_id = params.get('page_id', '')
-                    updates = params.get('updates', {})
-                    if not page_id or not updates:
-                        result = "Error: Page ID and updates are required"
-                    else:
-                        self.notion.pages.update(page_id, **updates)
-                        result = "Page updated successfully"
-                except Exception as e:
-                    result = f"Error updating page: {str(e)}"
+            elif action == 'read_database':
+                database_id = params.get('database_id')
+                if not database_id:
+                    return stream_string("Error: database_id is required for read_database action")
+                result = await self._read_database(database_id)
+            elif action == 'create_entry':
+                database_id = params.get('database_id')
+                title = params.get('title', 'New Entry')
+                if not database_id:
+                    return stream_string("Error: database_id is required for create_entry action")
+                result = await self._create_entry(database_id, title)
             else:
                 result = (
-                    "Invalid action. Supported actions are: "
-                    "'search', 'read_page', 'update_page', 'create_page', 'list_databases'"
+                    "Invalid action. You can:\n"
+                    "1. Provide a Notion URL or database ID directly\n"
+                    "2. Use {'action': 'list_databases'} to see available databases\n"
+                    "3. Use {'action': 'read_database', 'params': {'database_id': 'your-id'}}\n"
+                    "4. Use {'action': 'create_entry', 'params': {'database_id': 'your-id', 'title': 'New Entry'}}"
                 )
 
             return stream_string(result)
 
-        except json.JSONDecodeError:
-            return stream_string("Error: Input must be a valid JSON string with 'action' and 'params' keys")
         except Exception as e:
             return stream_string(f"Error accessing Notion: {str(e)}")

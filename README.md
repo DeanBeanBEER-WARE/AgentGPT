@@ -3,6 +3,30 @@
 ## Overview
 AgentGPT is an autonomous AI agent platform that allows users to create and deploy AI agents in their browser. These agents can perform various tasks using a collection of tools and can be extended with custom capabilities.
 
+## Notion Integration
+
+- **Purpose**: Allows access to and management of Notion databases.
+- **Functions**:
+  1. **List Databases**: `{'action': 'list_databases'}`
+  2. **Read Database**: `{'action': 'read_database', 'params': {'database_id': 'your-database-id'}}`
+  3. **Create New Entry**: `{'action': 'create_entry', 'params': {'database_id': 'your-database-id', 'title': 'Your Entry Title'}}`
+  
+- **Special Instructions**:
+  - For tasks involving reading, accessing, or managing Notion content, use the 'notion' function.
+  - Extract the database ID from the URL (part before any '?') and use it as the argument.
+
+## Test Endpoints
+
+- **Test Endpoint for Analyzing Tasks**: 
+  - URL: `/api/test/analyze`
+  - Example Request:
+    ```json
+    {
+        "goal": "Read Notion database content",
+        "task": "Read my Notion database at notion.so/your-database-id"
+    }
+    ```
+
 ## Project Structure
 
 ```
@@ -204,35 +228,11 @@ To use the Notion integration directly:
    REWORKD_PLATFORM_NOTION_API_KEY=your_notion_integration_token
    ```
 4. Share your Notion pages/databases with the integration
-}}
-
-1. Create a Notion integration at https://www.notion.so/my-integrations
-2. Get your integration token (starts with "secret_")
-3. Add to your .env file:
-   ```
-   REWORKD_PLATFORM_NOTION_API_KEY=your_notion_integration_token
-   ```
-4. Share your Notion pages/databases with the integration
 
 The Notion tool supports:
 - Searching pages and databases
 - Reading page content
 - Updating page content
-
-Example usage:
-```json
-// Search Notion
-{"action": "search", "params": {"query": "meeting notes"}}
-
-// Read a page
-{"action": "read_page", "params": {"page_id": "page_id_here"}}
-
-// Update a page
-{"action": "update_page", "params": {
-    "page_id": "page_id_here",
-    "updates": {"properties": {"Title": {"title": [{"text": {"content": "New Title"}}]}}}
-}}
-```
 
 ## Contributing
 1. Fork the repository

@@ -12,6 +12,7 @@ from reworkd_platform.schemas.agent import (
     AgentTaskCreate,
     AgentTaskExecute,
     NewTasksResponse,
+    ModelSettings,
 )
 from reworkd_platform.web.api.agent.agent_service.agent_service import AgentService
 from reworkd_platform.web.api.agent.agent_service.agent_service_provider import (
@@ -29,7 +30,6 @@ from reworkd_platform.web.api.agent.dependancies import (
 from reworkd_platform.web.api.agent.tools.tools import get_external_tools, get_tool_name
 
 router = APIRouter()
-
 
 @router.post(
     "/start",
@@ -143,3 +143,23 @@ async def get_user_tools() -> ToolsResponse:
     ]
 
     return ToolsResponse(tools=formatted_tools)
+
+
+# Test endpoint for analyzing tasks
+class TestRequest(BaseModel):
+    goal: str
+    task: str
+    model_settings: Optional[ModelSettings] = None
+
+
+@router.post("/test/analyze")
+async def test_analyze(
+    req_body: TestRequest,
+    agent_service: AgentService = Depends(get_agent_service(None)),  # Remove validator
+) -> Analysis:
+    """Test endpoint for analyzing tasks"""
+    return await agent_service.analyze_task_agent(
+        goal=req_body.goal,
+        task=req_body.task,
+        tool_names=["notion", "search"],  # Enable both tools for testing
+    )
