@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#FFFFFF" x="4" y="2" width="16" height="20" rx="2"/>
+        <rect fill="#000000" x="6" y="4" width="12" height="4" rx="1"/>
+        <g transform="translate(6, 10)" fill="#000000">
+            <circle cx="2" cy="2" r="1"/>
+            <circle cx="6" cy="2" r="1"/>
+            <circle cx="10" cy="2" r="1"/>
+            <circle cx="2" cy="6" r="1"/>
+            <circle cx="6" cy="6" r="1"/>
+            <circle cx="10" cy="6" r="1"/>
+            <circle cx="2" cy="10" r="1"/>
+            <circle cx="6" cy="10" r="1"/>
+            <circle cx="10" cy="10" r="1"/>
+        </g>
+    </g>
+</svg>
