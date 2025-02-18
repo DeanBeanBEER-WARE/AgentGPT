@@ -1,23 +1,20 @@
-import type { Session } from "next-auth";
-
 import type { Analysis } from "../services/agent/analysis";
-import type { GPTModelNames, ModelSettings } from "../types";
+import type { GPTModelNames, ModelSettings } from "../types/modelSettings";
 
 export interface ApiModelSettings {
   language: string;
   model: GPTModelNames;
   temperature: number;
   max_tokens: number;
+  custom_api_key?: string;
 }
 
-export const toApiModelSettings = (modelSettings: ModelSettings, session?: Session) => {
-  const allowCustomization = session?.user;
-
+export const toApiModelSettings = (modelSettings: ModelSettings) => {
   return {
     language: modelSettings.language.name,
-    model: allowCustomization ? modelSettings.customModelName : "gpt-3.5-turbo",
+    model: modelSettings.customModelName,
     temperature: modelSettings.customTemperature,
-    max_tokens: allowCustomization ? modelSettings.maxTokens : 500,
+    max_tokens: modelSettings.maxTokens,
     custom_api_key: modelSettings.customApiKey,
   };
 };
@@ -34,5 +31,5 @@ export interface RequestBody {
   completed_tasks?: string[];
   analysis?: Analysis;
   tool_names?: string[];
-  message?: string; // Used for the chat endpoint
+  message?: string;
 }
